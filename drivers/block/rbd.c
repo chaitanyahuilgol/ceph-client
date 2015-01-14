@@ -423,6 +423,7 @@ static ssize_t rbd_add_single_major(struct bus_type *bus, const char *buf,
 				    size_t count);
 static ssize_t rbd_remove_single_major(struct bus_type *bus, const char *buf,
 				       size_t count);
+static ssize_t rbd_enumerate_options(struct bus_type *bus, char *buf);
 static int rbd_dev_image_probe(struct rbd_device *rbd_dev, bool mapping);
 static void rbd_spec_put(struct rbd_spec *spec);
 
@@ -440,12 +441,14 @@ static BUS_ATTR(add, S_IWUSR, NULL, rbd_add);
 static BUS_ATTR(remove, S_IWUSR, NULL, rbd_remove);
 static BUS_ATTR(add_single_major, S_IWUSR, NULL, rbd_add_single_major);
 static BUS_ATTR(remove_single_major, S_IWUSR, NULL, rbd_remove_single_major);
+static BUS_ATTR(options, S_IRUSR, rbd_enumerate_options, NULL);
 
 static struct attribute *rbd_bus_attrs[] = {
 	&bus_attr_add.attr,
 	&bus_attr_remove.attr,
 	&bus_attr_add_single_major.attr,
 	&bus_attr_remove_single_major.attr,
+	&bus_attr_options.attr,
 	NULL,
 };
 
@@ -745,6 +748,12 @@ static match_table_t rbd_opts_tokens = {
 	/* Boolean args above */
 	{-1, NULL}
 };
+
+/*
+ * Supported options comma separated string. Readable by the rbd cli, so that
+ * an informed decision can be made on passing options to the kernel modules.
+ */
+static const char *rbd_supported_option_keys = "rw";
 
 struct rbd_options {
 	bool	read_only;
@@ -5590,6 +5599,18 @@ static ssize_t rbd_remove_single_major(struct bus_type *bus,
 	return do_rbd_remove(bus, buf, count);
 }
 
+static ssize_t rbd_enumerate_options(struct bus_type *bus,
+		char *buf)
+{
+	ssize_t sz;
+	sz = snprintf(buf, PAGE_SIZE, "%s", rbd_supported_option_keys);
+	if ((sz + 1) < PAGE_SIZE) {
+		sz += snprintf (buf + sz, PAGE_SIZE - sz, ",%s",
+			ceph_get_supported_options());
+	}
+	sz += 1; /* '0' String Termination */
+	return sz;
+}
 /*
  * create control files in sysfs
  * /sys/bus/rbd/...

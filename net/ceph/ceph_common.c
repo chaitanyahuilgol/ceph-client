@@ -261,6 +261,23 @@ static match_table_t opt_tokens = {
 	{Opt_nocephx_require_signatures, "nocephx_require_signatures"},
 	{-1, NULL}
 };
+/*
+ * Supported option keys. Readable by the rbd cli, so that an informed
+ * decision can be made on passing options to the kernel modules.
+ */
+static const char *libceph_supported_options_keys =
+	"osdtimeout,"
+	"osdkeepalive,"
+	"mount_timeout,"
+	"osd_idle_ttl,"
+	"fsid,"
+	"name,"
+	"secret,"
+	"key,"
+	"ip,"
+	"share,"
+	"crc,"
+	"cephx_require_signatures";
 
 void ceph_destroy_options(struct ceph_options *opt)
 {
@@ -477,6 +494,14 @@ out:
 	return ERR_PTR(err);
 }
 EXPORT_SYMBOL(ceph_parse_options);
+
+
+const char* ceph_get_supported_options(void)
+{
+    return  libceph_supported_options_keys;
+}
+EXPORT_SYMBOL(ceph_get_supported_options);
+
 
 u64 ceph_client_id(struct ceph_client *client)
 {
