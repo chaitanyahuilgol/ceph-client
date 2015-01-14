@@ -469,6 +469,21 @@ static void set_sock_callbacks(struct socket *sock,
 /*
  * socket helpers
  */
+static void ceph_tcp_set_sock_options(struct ceph_connection *con)
+{
+	int rc;
+
+	if (con->options &&
+			!ceph_test_con_opt(con->options, CEPH_CON_OPT_NO_TCP_NODELAY)) {
+		/* Not requested to disable TCP_NODELAY, set it by default */
+		int optval = 1;
+		rc = kernel_setsockopt(con->sock, IPPROTO_TCP, TCP_NODELAY,
+		    (char *)&optval, sizeof(optval));
+		if (rc != 0) {
+			pr_warn("Warn: CEPH_CON_OPT: TCP_NODELAY: Fails=%d\n", rc);
+		}
+	}
+}
 
 /*
  * initiate connection to a remote socket.
@@ -513,6 +528,9 @@ static int ceph_tcp_connect(struct ceph_connection *con)
 	sk_set_memalloc(sock->sk);
 
 	con->sock = sock;
+	/* process socket options if any */
+	ceph_tcp_set_sock_options(con);
+
 	return 0;
 }
 
@@ -732,11 +750,23 @@ void ceph_con_init(struct ceph_connection *con, void *private,
 	const struct ceph_connection_operations *ops,
 	struct ceph_messenger *msgr)
 {
+	ceph_con_init_with_options(con, private, ops, msgr, NULL /* no options */);
+}
+EXPORT_SYMBOL(ceph_con_init);
+
+/*
+ * initialize a new connection with connection options.
+ */
+void ceph_con_init_with_options(struct ceph_connection *con, void *private,
+	const struct ceph_connection_operations *ops,
+	struct ceph_messenger *msgr, struct ceph_connection_options *options)
+{
 	dout("con_init %p\n", con);
 	memset(con, 0, sizeof(*con));
 	con->private = private;
 	con->ops = ops;
 	con->msgr = msgr;
+	con->options = options;
 
 	con_sock_state_init(con);
 
@@ -747,8 +777,7 @@ void ceph_con_init(struct ceph_connection *con, void *private,
 
 	con->state = CON_STATE_CLOSED;
 }
-EXPORT_SYMBOL(ceph_con_init);
-
+EXPORT_SYMBOL(ceph_con_init_with_options);
 
 /*
  * We maintain a global counter to order connection attempts.  Get

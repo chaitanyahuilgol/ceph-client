@@ -1013,7 +1013,8 @@ static struct ceph_osd *create_osd(struct ceph_osd_client *osdc, int onum)
 	INIT_LIST_HEAD(&osd->o_osd_lru);
 	osd->o_incarnation = 1;
 
-	ceph_con_init(&osd->o_con, osd, &osd_con_ops, &osdc->client->msgr);
+	ceph_con_init_with_options(&osd->o_con, osd, &osd_con_ops,
+		&osdc->client->msgr, &osdc->client->options->con_options);
 
 	INIT_LIST_HEAD(&osd->o_keepalive_item);
 	return osd;

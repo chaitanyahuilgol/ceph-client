@@ -42,6 +42,7 @@ struct ceph_options {
 	int flags;
 	struct ceph_fsid fsid;
 	struct ceph_entity_addr my_addr;
+	struct ceph_connection_options con_options;
 	int mount_timeout;
 	int osd_idle_ttl;
 	int osd_keepalive_timeout;

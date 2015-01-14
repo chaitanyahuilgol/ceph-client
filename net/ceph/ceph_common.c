@@ -239,6 +239,8 @@ enum {
 	Opt_nocrc,
 	Opt_cephx_require_signatures,
 	Opt_nocephx_require_signatures,
+	Opt_tcp_nodelay,
+	Opt_no_tcp_nodelay,
 };
 
 static match_table_t opt_tokens = {
@@ -259,6 +261,8 @@ static match_table_t opt_tokens = {
 	{Opt_nocrc, "nocrc"},
 	{Opt_cephx_require_signatures, "cephx_require_signatures"},
 	{Opt_nocephx_require_signatures, "nocephx_require_signatures"},
+	{Opt_tcp_nodelay, "tcp_nodelay"},
+	{Opt_no_tcp_nodelay, "no_tcp_nodelay"},
 	{-1, NULL}
 };
 /*
@@ -277,7 +281,8 @@ static const char *libceph_supported_options_keys =
 	"ip,"
 	"share,"
 	"crc,"
-	"cephx_require_signatures";
+	"cephx_require_signatures,"
+	"tcp_nodelay";
 
 void ceph_destroy_options(struct ceph_options *opt)
 {
@@ -337,8 +342,7 @@ out:
 	return err;
 }
 
-struct ceph_options *
-ceph_parse_options(char *options, const char *dev_name,
+struct ceph_options * ceph_parse_options(char *options, const char *dev_name,
 			const char *dev_name_end,
 			int (*parse_extra_token)(char *c, void *private),
 			void *private)
@@ -367,6 +371,7 @@ ceph_parse_options(char *options, const char *dev_name,
 	opt->osd_keepalive_timeout = CEPH_OSD_KEEPALIVE_DEFAULT;
 	opt->mount_timeout = CEPH_MOUNT_TIMEOUT_DEFAULT; /* seconds */
 	opt->osd_idle_ttl = CEPH_OSD_IDLE_TTL_DEFAULT;   /* seconds */
+	ceph_connection_options_init(&opt->con_options);
 
 	/* get mon ip(s) */
 	/* ip1[:port1][,ip2[:port2]...] */
@@ -479,6 +484,12 @@ ceph_parse_options(char *options, const char *dev_name,
 			break;
 		case Opt_nocephx_require_signatures:
 			opt->flags |= CEPH_OPT_NOMSGAUTH;
+			break;
+		case Opt_tcp_nodelay:
+			ceph_clr_con_opt(&opt->con_options, CEPH_CON_OPT_NO_TCP_NODELAY);
+			break;
+		case Opt_no_tcp_nodelay:
+			ceph_set_con_opt(&opt->con_options, CEPH_CON_OPT_NO_TCP_NODELAY);
 			break;
 
 		default:
