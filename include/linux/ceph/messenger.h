@@ -51,12 +51,34 @@ struct ceph_connection_operations {
 /* use format string %s%d */
 #define ENTITY_NAME(n) ceph_entity_type_name((n).type), le64_to_cpu((n).num)
 
+/*
+ * Messenger specific ceph options
+ */
+struct ceph_messenger_options {
+	u32 flags;
+};
+
+#define CEPH_MSGR_OPT_NOCRC          (1<<0) /* no data crc on writes */
+#define CEPH_MSGR_OPT_NO_TCP_NODELAY (1<<1) /* No TCP_NODELAY on con sock */
+#define CEPH_MSGR_OPT_DEFAULT        (0)
+
+#define ceph_messenger_options_init(_msgr_opts)  \
+	((_msgr_opts)->flags = CEPH_MSGR_OPT_DEFAULT)
+
+#define ceph_set_msgr_opt(_msgr_opts, _opt) \
+	((_msgr_opts)->flags |= _opt)
+#define ceph_clr_msgr_opt(_msgr_opts, _opt) \
+	((_msgr_opts)->flags &= ~(_opt))
+#define ceph_test_msgr_opt(_msgr_opts, _opt) \
+	(!!((_msgr_opts)->flags & (_opt)))
+
+
 struct ceph_messenger {
 	struct ceph_entity_inst inst;    /* my name+address */
 	struct ceph_entity_addr my_enc_addr;
 
 	atomic_t stopping;
-	bool nocrc;
+	struct ceph_messenger_options *options;
 
 	/*
 	 * the global_seq counts connections i (attempt to) initiate
@@ -173,23 +195,6 @@ struct ceph_msg {
 #define BASE_DELAY_INTERVAL	(HZ/2)
 #define MAX_DELAY_INTERVAL	(5 * 60 * HZ)
 
-struct ceph_connection_options {
-	u32 flags;
-};
-
-
-#define CEPH_CON_OPT_NO_TCP_NODELAY (1<<0) /* No TCP_NODELAY on con sock */
-#define CEPH_CON_OPT_DEFAULT   (0)
-
-#define ceph_connection_options_init(_con_opts) ((_con_opts)->flags = CEPH_CON_OPT_DEFAULT)
-
-#define ceph_set_con_opt(_con_opts, _opt) \
-	((_con_opts)->flags |= _opt)
-#define ceph_clr_con_opt(_con_opts, _opt) \
-	((_con_opts)->flags &= ~(_opt))
-#define ceph_test_con_opt(_con_opts, _opt) \
-	(!!((_con_opts)->flags & (_opt)))
-
 /*
  * A single connection with another host.
  *
@@ -201,7 +206,6 @@ struct ceph_connection {
 	void *private;
 
 	const struct ceph_connection_operations *ops;
-	struct ceph_connection_options *options;
 
 	struct ceph_messenger *msgr;
 
@@ -282,14 +286,11 @@ extern void ceph_messenger_init(struct ceph_messenger *msgr,
 			struct ceph_entity_addr *myaddr,
 			u64 supported_features,
 			u64 required_features,
-			bool nocrc);
+			struct ceph_messenger_options *msgr_options);
 
 extern void ceph_con_init(struct ceph_connection *con, void *private,
 			const struct ceph_connection_operations *ops,
 			struct ceph_messenger *msgr);
-void ceph_con_init_with_options(struct ceph_connection *con, void *private,
-	const struct ceph_connection_operations *ops,
-	struct ceph_messenger *msgr, struct ceph_connection_options *options);
 extern void ceph_con_open(struct ceph_connection *con,
 			  __u8 entity_type, __u64 entity_num,
 			  struct ceph_entity_addr *addr);

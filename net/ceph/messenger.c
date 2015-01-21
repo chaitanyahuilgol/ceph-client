@@ -473,8 +473,8 @@ static void ceph_tcp_set_sock_options(struct ceph_connection *con)
 {
 	int rc;
 
-	if (con->options &&
-			!ceph_test_con_opt(con->options, CEPH_CON_OPT_NO_TCP_NODELAY)) {
+	if (!ceph_test_msgr_opt(con->msgr->options, 
+		CEPH_MSGR_OPT_NO_TCP_NODELAY)) {
 		/* Not requested to disable TCP_NODELAY, set it by default */
 		int optval = 1;
 		rc = kernel_setsockopt(con->sock, IPPROTO_TCP, TCP_NODELAY,
@@ -750,23 +750,11 @@ void ceph_con_init(struct ceph_connection *con, void *private,
 	const struct ceph_connection_operations *ops,
 	struct ceph_messenger *msgr)
 {
-	ceph_con_init_with_options(con, private, ops, msgr, NULL /* no options */);
-}
-EXPORT_SYMBOL(ceph_con_init);
-
-/*
- * initialize a new connection with connection options.
- */
-void ceph_con_init_with_options(struct ceph_connection *con, void *private,
-	const struct ceph_connection_operations *ops,
-	struct ceph_messenger *msgr, struct ceph_connection_options *options)
-{
 	dout("con_init %p\n", con);
 	memset(con, 0, sizeof(*con));
 	con->private = private;
 	con->ops = ops;
 	con->msgr = msgr;
-	con->options = options;
 
 	con_sock_state_init(con);
 
@@ -777,7 +765,7 @@ void ceph_con_init_with_options(struct ceph_connection *con, void *private,
 
 	con->state = CON_STATE_CLOSED;
 }
-EXPORT_SYMBOL(ceph_con_init_with_options);
+EXPORT_SYMBOL(ceph_con_init);
 
 /*
  * We maintain a global counter to order connection attempts.  Get
@@ -1540,7 +1528,8 @@ static int write_partial_message_data(struct ceph_connection *con)
 {
 	struct ceph_msg *msg = con->out_msg;
 	struct ceph_msg_data_cursor *cursor = &msg->cursor;
-	bool do_datacrc = !con->msgr->nocrc;
+	bool do_datacrc = !ceph_test_msgr_opt(con->msgr->options, 
+				CEPH_MSGR_OPT_NOCRC);
 	u32 crc;
 
 	dout("%s %p msg %p\n", __func__, con, msg);
@@ -2241,7 +2230,8 @@ static int read_partial_msg_data(struct ceph_connection *con)
 {
 	struct ceph_msg *msg = con->in_msg;
 	struct ceph_msg_data_cursor *cursor = &msg->cursor;
-	const bool do_datacrc = !con->msgr->nocrc;
+	const bool do_datacrc = !ceph_test_msgr_opt(con->msgr->options, 
+				CEPH_MSGR_OPT_NOCRC);
 	struct page *page;
 	size_t page_offset;
 	size_t length;
@@ -2287,7 +2277,8 @@ static int read_partial_message(struct ceph_connection *con)
 	int end;
 	int ret;
 	unsigned int front_len, middle_len, data_len;
-	bool do_datacrc = !con->msgr->nocrc;
+	bool do_datacrc = !ceph_test_msgr_opt(con->msgr->options, 
+				CEPH_MSGR_OPT_NOCRC);
 	bool need_sign = (con->peer_features & CEPH_FEATURE_MSG_AUTH);
 	u64 seq;
 	u32 crc;
@@ -2951,7 +2942,7 @@ void ceph_messenger_init(struct ceph_messenger *msgr,
 			struct ceph_entity_addr *myaddr,
 			u64 supported_features,
 			u64 required_features,
-			bool nocrc)
+			struct ceph_messenger_options *msgr_options)
 {
 	msgr->supported_features = supported_features;
 	msgr->required_features = required_features;
@@ -2965,7 +2956,8 @@ void ceph_messenger_init(struct ceph_messenger *msgr,
 	msgr->inst.addr.type = 0;
 	get_random_bytes(&msgr->inst.addr.nonce, sizeof(msgr->inst.addr.nonce));
 	encode_my_addr(msgr);
-	msgr->nocrc = nocrc;
+	BUG_ON(msgr_options == NULL);
+	msgr->options = msgr_options;
 
 	atomic_set(&msgr->stopping, 0);
 

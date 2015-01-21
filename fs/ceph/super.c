@@ -423,7 +423,10 @@ static int ceph_show_options(struct seq_file *m, struct dentry *root)
 		seq_printf(m, ",fsid=%pU", &opt->fsid);
 	if (opt->flags & CEPH_OPT_NOSHARE)
 		seq_puts(m, ",noshare");
-	if (opt->flags & CEPH_OPT_NOCRC)
+	if (ceph_test_msgr_opt(&opt->msgr_options, 
+			CEPH_MSGR_OPT_NO_TCP_NODELAY))
+		seq_puts(m, ",no_tcp_nodelay");
+	if (ceph_test_msgr_opt(&opt->msgr_options, CEPH_MSGR_OPT_NOCRC))
 		seq_puts(m, ",nocrc");
 
 	if (opt->name)

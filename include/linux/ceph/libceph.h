@@ -28,8 +28,7 @@
 #define CEPH_OPT_FSID             (1<<0)
 #define CEPH_OPT_NOSHARE          (1<<1) /* don't share client with other sbs */
 #define CEPH_OPT_MYIP             (1<<2) /* specified my ip */
-#define CEPH_OPT_NOCRC            (1<<3) /* no data crc on writes */
-#define CEPH_OPT_NOMSGAUTH	  (1<<4) /* not require cephx message signature */
+#define CEPH_OPT_NOMSGAUTH	  (1<<3) /* not require cephx message signature */
 
 #define CEPH_OPT_DEFAULT   (0)
 
@@ -42,7 +41,7 @@ struct ceph_options {
 	int flags;
 	struct ceph_fsid fsid;
 	struct ceph_entity_addr my_addr;
-	struct ceph_connection_options con_options;
+	struct ceph_messenger_options msgr_options;
 	int mount_timeout;
 	int osd_idle_ttl;
 	int osd_keepalive_timeout;

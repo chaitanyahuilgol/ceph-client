@@ -371,7 +371,7 @@ struct ceph_options * ceph_parse_options(char *options, const char *dev_name,
 	opt->osd_keepalive_timeout = CEPH_OSD_KEEPALIVE_DEFAULT;
 	opt->mount_timeout = CEPH_MOUNT_TIMEOUT_DEFAULT; /* seconds */
 	opt->osd_idle_ttl = CEPH_OSD_IDLE_TTL_DEFAULT;   /* seconds */
-	ceph_connection_options_init(&opt->con_options);
+	ceph_messenger_options_init(&opt->msgr_options);
 
 	/* get mon ip(s) */
 	/* ip1[:port1][,ip2[:port2]...] */
@@ -474,22 +474,28 @@ struct ceph_options * ceph_parse_options(char *options, const char *dev_name,
 			break;
 
 		case Opt_crc:
-			opt->flags &= ~CEPH_OPT_NOCRC;
+			ceph_clr_msgr_opt(&opt->msgr_options, 
+				CEPH_MSGR_OPT_NOCRC);
 			break;
 		case Opt_nocrc:
-			opt->flags |= CEPH_OPT_NOCRC;
+			ceph_set_msgr_opt(&opt->msgr_options, 
+				CEPH_MSGR_OPT_NOCRC);
 			break;
+
 		case Opt_cephx_require_signatures:
 			opt->flags &= ~CEPH_OPT_NOMSGAUTH;
 			break;
 		case Opt_nocephx_require_signatures:
 			opt->flags |= CEPH_OPT_NOMSGAUTH;
 			break;
+
 		case Opt_tcp_nodelay:
-			ceph_clr_con_opt(&opt->con_options, CEPH_CON_OPT_NO_TCP_NODELAY);
+			ceph_clr_msgr_opt(&opt->msgr_options, 
+				CEPH_MSGR_OPT_NO_TCP_NODELAY);
 			break;
 		case Opt_no_tcp_nodelay:
-			ceph_set_con_opt(&opt->con_options, CEPH_CON_OPT_NO_TCP_NODELAY);
+			ceph_set_msgr_opt(&opt->msgr_options, 
+				CEPH_MSGR_OPT_NO_TCP_NODELAY);
 			break;
 
 		default:
@@ -557,7 +563,7 @@ struct ceph_client *ceph_create_client(struct ceph_options *opt, void *private,
 	ceph_messenger_init(&client->msgr, myaddr,
 		client->supported_features,
 		client->required_features,
-		ceph_test_opt(client, NOCRC));
+		&opt->msgr_options);
 
 	/* subsystems */
 	err = ceph_monc_init(&client->monc, client);
